@@ -16,6 +16,7 @@ def fetch_huggingface(limit = 10):
             {
                 "title": paper.get('title', ""),
                 "abstract": paper.get('summary', ""),
+                "ai_summary": paper.get('ai_summary', ""),
                 "link": f"https://arxiv.org/abs/{paper.get('id', '')}",
                 "authors": [a['name'] for a in paper.get("authors", "")],
                 "upvotes": paper.get('upvotes', 0),

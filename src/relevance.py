@@ -17,6 +17,7 @@ The reader is interested in:
 - Multimodal models combining language and vision
 - Deployment-focused work: inference efficiency, serving, scaling, latency, cost
 - Survey papers and accessible introductions to new areas
+- Vision Language Models and LLMs in general
 - Applied papers where someone built something and reports what worked
 - Papers that USE reinforcement learning to build or improve LLM agents and reasoning systems, where RL is the means rather than the contribution
 - Comparative or analytical papers that explain how RL training affects language models (these often teach RL concepts as a side effect)

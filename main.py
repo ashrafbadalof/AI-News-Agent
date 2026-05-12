@@ -3,6 +3,7 @@ from src.fetch_arxiv import fetch_arxiv
 from src.summarize import summarize_paper
 from src.relevance import rate_relevance
 from src.email_sender import send_digest_email
+from src.fetch_huggingface import fetch_huggingface
 
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,8 @@ Path('digests').mkdir(exist_ok=True)
 
 today = datetime.now().strftime("%Y-%m-%d")
 filename = f"digests/digest_{today}.md"
+
+hf_papers = fetch_huggingface(limit=10)
 
 url = 'http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=30'
 
@@ -24,6 +27,7 @@ top_papers = papers[:5]
 
 with open(filename, 'w', encoding='utf-8') as f:
     f.write(f'# AI Research Digest {today}\n\n')
+    f.write("## arXiv Papers\n\n")
     f.write(f'Reviewed {len(papers)} papers, showing top {len(top_papers)} by relevance. \n\n')
 
     for paper in top_papers:
@@ -37,6 +41,11 @@ with open(filename, 'w', encoding='utf-8') as f:
 
         f.write('\n\n---\n\n')
         time.sleep(2)
+    
+    f.write("## HF Daily Papers (community picks)\n\n")
+    for paper in hf_papers:
+        f.write(f"- **[{paper['upvotes']} upvotes]** [{paper['title']}]({paper['link']}) — {paper['ai_summary']}\n")
+    f.write("\n---\n\n")
 
     f.write("## Filtered Out (lowest 5 scores)\n\n")
     for paper in papers[-5:]:
