@@ -13,6 +13,7 @@ def fetch_arxiv(url):
             "abstract" : entry['summary'],
             "link" : entry['link'],
             "authors" : [a['name'] for a in entry['authors']],
+            "source": "arxiv",
             }
         papers.append(paper)
     
