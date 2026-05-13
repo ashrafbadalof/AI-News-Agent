@@ -1,4 +1,5 @@
 import time
+import logging
 from src.fetch_arxiv import fetch_arxiv
 from src.summarize import summarize_paper
 from src.relevance import rate_relevance
@@ -10,50 +11,86 @@ from pathlib import Path
 
 Path('digests').mkdir(exist_ok=True)
 
+log_file = Path("digests") / "log.txt"
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format="%(asctime)s — %(levelname)s — %(message)s",
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 today = datetime.now().strftime("%Y-%m-%d")
 filename = f"digests/digest_{today}.md"
 
-hf_papers = fetch_huggingface(limit=10)
+logging.info(f'Starting digest run for {today}')
 
-url = 'http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=30'
+try:
+    hf_papers = fetch_huggingface(limit=10)
+    logging.info(f'Fetched {len(hf_papers)} HF papers')
+except Exception as e:
+    logging.error(f'HF fetch failed {e}')
+    hf_papers = []
 
-papers = fetch_arxiv(url=url)
-for paper in papers:
-    paper['score'] = rate_relevance(paper)
-    time.sleep(0.5)
+try:
+    url = 'http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=30'
+    papers = fetch_arxiv(url=url)
+    logging.info(f'Fetched {len(papers)} arXiv papers')
+except Exception as e:
+    logging.error(f'arXiv fetch failed {e}')
+    papers = []
 
-papers.sort(key=lambda p: p['score'], reverse=True)
-top_papers = papers[:5]
+top_papers = []
+if papers:
+    logging.info('Scoring relevance')
+    for paper in papers:
+        paper['score'] = rate_relevance(paper)
+        time.sleep(0.5)
+    papers.sort(key=lambda p: p['score'], reverse=True)
+    top_papers = papers[:5]
+    logging.info(f'Top scores: {[p["score"] for p in top_papers]}')
 
 with open(filename, 'w', encoding='utf-8') as f:
     f.write(f'# AI Research Digest {today}\n\n')
-    f.write("## arXiv Papers\n\n")
-    f.write(f'Reviewed {len(papers)} papers, showing top {len(top_papers)} by relevance. \n\n')
-
-    for paper in top_papers:
-        f.write(f'## {paper["title"]} \n')
-        f.write(f'**Relevance score**: {paper["score"]}/10  \n')
-        f.write(f'**Authors**: {", ".join(paper["authors"])}  \n')
-        f.write(f'**Link**: {paper["link"]}\n\n')
-
-        summary = summarize_paper(paper['abstract'])
-        f.write(summary)
-
-        f.write('\n\n---\n\n')
-        time.sleep(2)
     
-    f.write("## HF Daily Papers (community picks)\n\n")
-    for paper in hf_papers:
-        f.write(f"- **[{paper['upvotes']} upvotes]** [{paper['title']}]({paper['link']}) — {paper['ai_summary']}\n")
-    f.write("\n---\n\n")
+    if top_papers:
+        f.write("## arXiv Papers\n\n")
+        f.write(f'Reviewed {len(papers)} papers, showing top {len(top_papers)} by relevance. \n\n')
 
-    f.write("## Filtered Out (lowest 5 scores)\n\n")
-    for paper in papers[-5:]:
-        f.write(f"- [{paper['score']}/10] {paper['title']}\n")
+        for paper in top_papers:
+            f.write(f'## {paper["title"]} \n')
+            f.write(f'**Relevance score**: {paper["score"]}/10  \n')
+            f.write(f'**Authors**: {", ".join(paper["authors"])}  \n')
+            f.write(f'**Link**: {paper["link"]}\n\n')
 
-print(f"Digest saved to {filename}")
+            summary = summarize_paper(paper['abstract'])
+            f.write(summary)
 
-with open(filename, 'r', encoding='utf-8') as f:
-    digest_content = f.read()
+            f.write('\n\n---\n\n')
+            time.sleep(2)
+    else:
+        f.write('## arXiv Papers\n\n arXiv fetch failed today. Check log for details \n\n---\n\n')
+    
+    if hf_papers:
+        f.write("## HF Daily Papers (community picks)\n\n")
+        for paper in hf_papers:
+            f.write(f"- **[{paper['upvotes']} upvotes]** [{paper['title']}]({paper['link']}) — {paper['ai_summary']}\n")
+        f.write("\n---\n\n")
+    else:
+        f.write('## HF Daily Papers \n\n HF fetch failed today. Check log for details \n\n---\n\n')
 
-send_digest_email(digest_content, f"AI Research Digest: {today}")
+    if papers:
+        f.write("## Filtered Out (lowest 5 scores)\n\n")
+        for paper in papers[-5:]:
+            f.write(f"- [{paper['score']}/10] {paper['title']}\n")
+
+logging.info(f"Digest saved to {filename}")
+
+try:
+    with open(filename, 'r', encoding='utf-8') as f:
+        digest_content = f.read()
+    send_digest_email(digest_content, f"AI Research Digest: {today}")
+    logging.info('Email sent successfully')
+except Exception as e:
+    logging.error(f'Email failed: {e}')
+
+logging.info("Run complete\n")

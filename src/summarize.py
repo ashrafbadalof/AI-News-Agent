@@ -14,9 +14,12 @@ Abstract:
 {abstract}"""
 
 def summarize_paper(abstract:str) -> str:
-    response = client.messages.create(
-        model='claude-haiku-4-5',
-        max_tokens=1000,
-        messages=[{'role': 'user', 'content': SUMMARY_PROMPT.format(abstract = abstract)} ]
-        )
-    return response.content[0].text
+    try:
+        response = client.messages.create(
+            model='claude-haiku-4-5',
+            max_tokens=1000,
+            messages=[{'role': 'user', 'content': SUMMARY_PROMPT.format(abstract = abstract)} ]
+            )
+        return response.content[0].text
+    except Exception:
+        return "Summary unavailable - API error"
