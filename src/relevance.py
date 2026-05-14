@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
+from config import RELEVANCE_MAX_TOKENS, MODEL
+
 load_dotenv()
 client = Anthropic()
 
@@ -40,8 +42,8 @@ Abstract: {abstract}"""
 
 def rate_relevance(paper: dict) -> int:
     response = client.messages.create(
-        model='claude-haiku-4-5',
-        max_tokens=10,
+        model=MODEL,
+        max_tokens=RELEVANCE_MAX_TOKENS,
         messages=[
             {'role':'user', 'content':RELEVANCE_PROMPT.format(
                 title = paper['title'],

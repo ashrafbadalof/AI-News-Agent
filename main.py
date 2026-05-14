@@ -9,6 +9,8 @@ from src.fetch_huggingface import fetch_huggingface
 from datetime import datetime
 from pathlib import Path
 
+from config import ARXIV_MAX_RESULTS, ARXIV_CATEGORIES, HF_MAX_RESULTS, TOP_N_PAPERS
+
 Path('digests').mkdir(exist_ok=True)
 
 log_file = Path("digests") / "log.txt"
@@ -25,14 +27,18 @@ filename = f"digests/digest_{today}.md"
 logging.info(f'Starting digest run for {today}')
 
 try:
-    hf_papers = fetch_huggingface(limit=10)
+    hf_papers = fetch_huggingface(HF_MAX_RESULTS)
     logging.info(f'Fetched {len(hf_papers)} HF papers')
 except Exception as e:
     logging.error(f'HF fetch failed {e}')
     hf_papers = []
 
+category_query = "+OR+".join(f"cat:{c}" for c in ARXIV_CATEGORIES)
 try:
-    url = 'http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=30'
+    url = (f"http://export.arxiv.org/api/query?"
+           f"search_query={category_query}"
+           f"&sortBy=submittedDate&sortOrder=descending"
+           f"&max_results={ARXIV_MAX_RESULTS}")
     papers = fetch_arxiv(url=url)
     logging.info(f'Fetched {len(papers)} arXiv papers')
 except Exception as e:
@@ -46,7 +52,7 @@ if papers:
         paper['score'] = rate_relevance(paper)
         time.sleep(0.5)
     papers.sort(key=lambda p: p['score'], reverse=True)
-    top_papers = papers[:5]
+    top_papers = papers[:TOP_N_PAPERS]
     logging.info(f'Top scores: {[p["score"] for p in top_papers]}')
 
 with open(filename, 'w', encoding='utf-8') as f:

@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
+from config import SUMMARY_MAX_TOKENS, MODEL
+
 load_dotenv()
 client = Anthropic()
 
@@ -16,8 +18,8 @@ Abstract:
 def summarize_paper(abstract:str) -> str:
     try:
         response = client.messages.create(
-            model='claude-haiku-4-5',
-            max_tokens=1000,
+            model=MODEL,
+            max_tokens=SUMMARY_MAX_TOKENS,
             messages=[{'role': 'user', 'content': SUMMARY_PROMPT.format(abstract = abstract)} ]
             )
         return response.content[0].text
