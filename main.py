@@ -11,6 +11,13 @@ from pathlib import Path
 
 from config import ARXIV_MAX_RESULTS, ARXIV_CATEGORIES, HF_MAX_RESULTS, TOP_N_PAPERS
 
+def extract_arxiv_id(link):
+    try:
+        id_part = link.split('/abs/')[-1]
+        return id_part.split('v')[0]
+    except:
+        return None
+
 Path('digests').mkdir(exist_ok=True)
 
 log_file = Path("digests") / "log.txt"
@@ -54,6 +61,21 @@ if papers:
     papers.sort(key=lambda p: p['score'], reverse=True)
     top_papers = papers[:TOP_N_PAPERS]
     logging.info(f'Top scores: {[p["score"] for p in top_papers]}')
+
+arxiv_ids = set()
+for paper in top_papers:
+    a_id = extract_arxiv_id(paper['link'])
+    if a_id:
+        arxiv_ids.add(a_id)
+
+hf_papers_before = len(hf_papers)
+hf_papers = [
+    p for p in hf_papers 
+    if extract_arxiv_id(p['link']) not in arxiv_ids
+]
+removed = hf_papers_before - len(hf_papers)
+if removed > 0:
+    logging.info(f"Removed {removed} duplicate HF papers")
 
 with open(filename, 'w', encoding='utf-8') as f:
     f.write(f'# AI Research Digest {today}\n\n')
